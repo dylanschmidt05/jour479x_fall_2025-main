@@ -51,7 +51,7 @@ head(attendance)
 
 What's one thing you notice about the data that might make year-over-year comparisons more complex?
 
-**Answer** DESCRIBE IT HERE
+**Answer** The biggest thing I notice is that there was no data collected during COVID, which makes sense given the fact that there were fan restrictions in terms of attending games that varied across conferences. Another thing I noticed is the schools that switched conferences during this time frame have two rows, their attendance when they were in one conference and the attendance in the other. The exception to that is the schools that moved from the Pac-12 recently, which are all listed in one row.
 
 The code to calculate percent change is pretty simple. Remember, with `summarize`, we used `n()` to count things. With `mutate`, we use very similar syntax to calculate a new value using other values in our dataset. So in this case, we're trying to do (new-old)/old, but we're doing it with fields. If we look at what we got when we did `head`, you'll see there's \`2024\` as the new data, and we'll use \`2023\` as the old data. So we're looking at one year. Then, to help us, we'll use arrange again to sort it, so we get the fastest growing school over one year.
 
@@ -77,7 +77,7 @@ attendance |> mutate(
 
 Who had the most growth in 2024 compared to the year before? What could account for that change? And what team(s) are the most interesting here?
 
-**Answer** YOUR ANSWER HERE
+**Answer** SMU had the biggest change between 2023 and 2024, rising from 135,697 to 228, 563. The thing that would account for that change is a new stadium being built that has a higher attendance capacity or if the team got really good and improved significantly. I think schools like Colorado St, Central Michigan and North Texas are the most interesting ones here because they didn't get significantly better last year to the point that they were in the playoff conversation. Ohio State is interesting because they have always been good so I don't know why the attendance rose a lot last season. The other schools make sense to be up there, given that they had a really good season last year relative to the year prior.
 
 ## Back to women's soccer
 
@@ -93,15 +93,15 @@ Previously we calculated totals for shots attempted and shots on goal for each t
 
 ```{r}
 matches_2025 |> 
-  group_by(REPLACE WITH GROUP_BY) |> 
+  group_by(team) |> 
   summarise(
-    total_on_goal = REPLACE WITH FORMULA,
-    total_goals = REPLACE WITH FORMULA
+    total_on_goal = sum(so_g),
+    total_goals = sum(goals)
   ) |> 
-  mutate(percent = REPLACE WITH FORMULA) |> 
+  mutate(percent = (total_goals/total_on_goal)*100) |> 
   arrange(desc(percent))
 ```
 
 What stands out to you here? Describe that below. Would you narrow down the results to certain teams based on the data? If so, do that in the code and explain why you did it below. Finally, what's the most interesting result to you that could be a story?
 
-**Answer** YOUR ANSWER HERE
+**Answer** The biggest thing that stands out to me given that I am a Maryland student is how low the women's soccer team is on this list. While it isn't surprising given their consistent offensive struggles, to be that low is a worrying sign heading into conference play. They didn't play that difficult of a schedule so to be scoring this few goals with the number of shots on goal they've had is concerning. I would narrow down the results to just Big Ten schools to see where Maryland is relative to the schools they will be playing in the near future. NC State being at 7.3 percent is crazy and defintely a story worth looking into since they are a Power Four school. The rest of the schools that far down on the list are mid-majors.
