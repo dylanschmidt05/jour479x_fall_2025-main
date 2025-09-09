@@ -41,9 +41,7 @@ matches_2025 |>
 ```{r}
 matches_2024 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2024.csv")
 matches_2024 |>
-  filter(team == "Maryland Terrapins, Terps",
-         date >= as.Date("2024-08-15"), 
-         date <= as.Date("2024-08-25"))  |>
+  filter(team == "Maryland Terrapins, Terps", date < "2024-08-26") |>
   summarise(
     shots = sum(sh_att),
     shots_on_goal = sum(so_g),
@@ -58,10 +56,9 @@ matches_2024 |>
 matches_2025 |>
   filter(outcome == "Draw") |>
   group_by(team) |>
-  summarise(
-    draws = n()
-  ) |>
-  arrange(desc(draws))
+  summarise(draws = n()) |>
+   filter (draws >=4) |>
+   arrange(desc(draws))
 ```
 
 
