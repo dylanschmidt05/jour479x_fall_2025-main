@@ -12,7 +12,7 @@ We'll want to start with 2025 match data, which is located in [this GitHub repos
 
 
 ```{r}
-matches_2025 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2025.csv")
+matches_2025 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2025.csv") |> mutate(diff = team_score - opponent_score)
 ```
 
 Let's take a look at this data to see what it contains, using `head` and `glimpse`:
@@ -28,12 +28,14 @@ Now, onto the questions using aggregates, which means `group_by` and `summarize`
 
 ```{r}
 matches_2025 |>
-  filter(team == "Maryland Terrapins, Terps") |>
+# filter(team == "Maryland Terrapins, Terps") |>
+  group_by(team) |> 
   summarise(
     shots = sum(sh_att),
     shots_on_goal = sum(so_g),
     shots_on_goal_pct = (shots_on_goal/shots) * 100
-  )
+  ) |> 
+  arrange(desc(shots_on_goal_pct))
 ```
 
 2. What about the same shot stats from last season's first four games? You'll need to load the matches from 2024 - just change the season in the URL - and filter by date to find the first four games.
@@ -78,3 +80,43 @@ matches_2025 |>
 5. What's the most interesting thing you've seen from these questions?
 
 I find it really interesting that there are two teams (Cal Poly Mustangs and Drexel Dragons) with at least four ties already this season. Ties in soccer are relatively common but to have over half of your games be ties at this point in the season is crazy. 
+
+```{r}
+swac_teams <- c("Alabama A&M Bulldogs", "Alabama St. Lady Hornets", "Alcorn Lady Braves", "Ark.-Pine Bluff Lady Lions", "Grambling Lady Tigers", "Jackson St. Lady Tigers", "Mississippi Val. Devilettes", "Prairie View Lady Panthers", "Southern U. Lady Jaguars", "Texas Southern Lady Tigers")
+
+swac_matches <- matches_2025 |> 
+  filter(team %in% swac_teams)
+
+matches_2025 |> 
+  summarise(
+    mean_diff = mean(diff),
+    mean_opp_goals = mean(defensive_goals),
+    mean_sog = mean(so_g),
+    mean_opp_sog = mean(defensive_so_g)
+    )
+
+swac_matches |> 
+  summarise(
+    mean_diff = mean(diff),
+    mean_opp_goals = mean(defensive_goals),
+    mean_sog = mean(so_g),
+    mean_opp_sog = mean(defensive_so_g)
+    )
+
+big10 <- c("Nebraska Huskers", "Iowa Hawkeyes", "Minnesota Golden Gophers", "Illinois Fighting Illini", "Northwestern Wildcats", "Wisconsin Badgers", "Indiana Hoosiers", "Purdue Boilermakers", "Ohio St. Buckeyes", "Michigan Wolverines", "Michigan St. Spartans", "Penn St. Nittany Lions", "Rutgers Scarlet Knights", "Maryland Terrapins, Terps", "Southern California Trojans", "UCLA Bruins", "Washington Huskies", "Oregon Ducks")
+
+big10_matches <- matches_2025 |> 
+  filter(team %in% big10)
+
+big10_matches |> 
+  group_by(team) |> 
+  summarise(
+    mean_diff = mean(diff),
+    mean_opp_goals = mean(defensive_goals),
+    mean_sog = mean(so_g),
+    mean_opp_sog = mean(defensive_so_g)
+    )
+```
+
+
+

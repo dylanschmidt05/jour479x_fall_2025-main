@@ -1,0 +1,87 @@
+---
+title: "Data-Driven_paragraphs"
+format: html
+---
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+matches_2024 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2024.csv") |> mutate(diff = team_score - opponent_score)
+```
+
+
+```{r}
+head(matches_2024)
+glimpse(matches_2024)
+```
+
+```{r}
+
+matches_2024 |> 
+  summarise(
+    mean_diff = mean(diff),
+    mean_opp_goals = mean(defensive_goals),
+    mean_sog = mean(so_g),
+    mean_opp_sog = mean(defensive_so_g)
+    )
+
+big10 <- c("Nebraska Huskers", "Iowa Hawkeyes", "Minnesota Golden Gophers", "Illinois Fighting Illini", "Northwestern Wildcats", "Wisconsin Badgers", "Indiana Hoosiers", "Purdue Boilermakers", "Ohio St. Buckeyes", "Michigan Wolverines", "Michigan St. Spartans", "Penn St. Nittany Lions", "Rutgers Scarlet Knights", "Maryland Terrapins, Terps", "Southern California Trojans", "UCLA Bruins", "Washington Huskies", "Oregon Ducks")
+
+big10_matches <- matches_2024 |> 
+  filter(team %in% big10)
+
+big10_matches |> 
+  summarise(
+    mean_diff = mean(diff),
+    mean_opp_goals = mean(defensive_goals),
+    mean_sog = mean(so_g),
+    mean_opp_sog = mean(defensive_so_g)
+    )
+
+acc <- c("Boston College Eagles", "California Golden Bears", "Clemson Tigers", "Duke Blue Devils", "Florida St. Seminoles", "Wake Forest Demon Deacons", "Notre Dame Fighting Irish", "Virginia Cavaliers", "Louisville Cardinals", "Stanford Cardinal", "North Carolina Tar Heels", "SMU Mustangs", "Syracuse Orange", "Miami (FL) Hurricanes", "Pittsburgh Panthers", "Virginia Tech Hokies", "NC State Wolfpack")
+
+acc_matches <- matches_2024 |> 
+  filter(team %in% acc)
+
+acc_matches |> 
+  summarise(
+    mean_diff = mean(diff),
+    mean_opp_goals = mean(defensive_goals),
+    mean_sog = mean(so_g),
+    mean_opp_sog = mean(defensive_so_g)
+    )
+
+sec <- c("South Carolina Gamecocks", "Florida Gators", "Arkansas Razorbacks", "Oklahoma Sooners", "Tennessee Volunteers", "Vanderbilt Commodores", "Mississippi St. Bulldogs", "Ole Miss Rebels", "Kentucky Wildcats", "Alabama Crimson Tide", "Texas A&M Aggies", "Auburn Tigers", "Georgia Bulldogs", "LSU Tigers", "Missouri Tigers", "Texas Longhorns")
+
+sec_matches <- matches_2024 |> 
+  filter(team %in% sec)
+
+sec_matches |> 
+  summarise(
+    mean_diff = mean(diff),
+    mean_opp_goals = mean(defensive_goals),
+    mean_sog = mean(so_g),
+    mean_opp_sog = mean(defensive_so_g)
+    )
+
+big12 <- c("Arizona St. Sun Devils", "UCF Knights", "Houston Cougars", "Kansas Jayhawks", "TCU Horned Frogs", "Texas Tech Red Raiders", "Baylor Bears", "Colorado Buffaloes", "Kansas St. Wildcats", "BYU Cougars", "West Virginia Mountaineers", "Utah Utes", "Iowa St. Cyclones", "Arizona Wildcats", "Oklahoma St. Cowgirls", "Cincinnati Bearcats")
+
+big12_matches <- matches_2024 |> 
+  filter(team %in% big12)
+
+big12_matches |> 
+  summarise(
+    mean_diff = mean(diff),
+    mean_opp_goals = mean(defensive_goals),
+    mean_sog = mean(so_g),
+    mean_opp_sog = mean(defensive_so_g)
+    )
+```
+
+Question: How do the power four conferences compare to each other and the division one average?
+
+While the distribution of teams ranked in the top 25 of the United Soccer Coaches poll is relatively even between the Big Ten, ACC and SEC, the ACC is without a doubt the best women's soccer conference in the country. Three of the last four national champions have come from the ACC, and North Carolina has historically dominated the sport with the most national championships (22). But it's not just the accolades that point to the ACC as the top conference. The ACC led all conferences last season in four important metrics: mean goal differential (0.83), mean opponents goals (1.10), mean shots on goal (6.85), mean opponents shots on goal (4.44). And it really wasn't that close. Between the ACC's superior offense and defense, it is easily regarded as the best conference year after year. With five teams ranked in the top 10 this season, the ACC looks poised to once again to lift the trophy in December.
+
