@@ -12,7 +12,8 @@ We'll want to start with 2025 match data, which is located in [this GitHub repos
 
 
 ```{r}
-matches_2025 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2025.csv") |> mutate(diff = team_score - opponent_score)
+matches_2025 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2025.csv") |> mutate(diff = team_score - opponent_score, total_goals = goals + defensive_goals)
+matches_2024 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2024.csv") |> mutate(diff = team_score - opponent_score, total_goals = goals + defensive_goals)
 ```
 
 Let's take a look at this data to see what it contains, using `head` and `glimpse`:
@@ -117,6 +118,16 @@ big10_matches |>
     mean_opp_sog = mean(defensive_so_g)
     )
 ```
+### Significance test
+```{r}
+matches_2025 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2025.csv") |> mutate(diff = team_score - opponent_score, total_goals = goals + defensive_goals)
+matches_2024 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2024.csv") |> mutate(diff = team_score - opponent_score, total_goals = goals + defensive_goals)
+matches_2024 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2024.csv") |> mutate(diff = team_score - opponent_score, total_goals = goals + defensive_goals) |> filter(date < '2024-09-18')
+```
 
-
+t-test
+```{r}
+t.test(matches_2024$total_goals, matches_2025$total_goals)
+```
+While the average number of goals scored this season is sightly up (2.75 to 2.90) from last year, the disparity in the number of games played this season hinders our ability to draw any conclusions from the comparison. When we just compare it to this point last season, the average number of goals scored this season is actually slightly down. With the season still in the early stages of conference play, I expect the average number of goals scored this season to go down right around where it finished last year.  
 
