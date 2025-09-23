@@ -129,5 +129,54 @@ t-test
 ```{r}
 t.test(matches_2024$total_goals, matches_2025$total_goals)
 ```
-While the average number of goals scored this season is sightly up (2.75 to 2.90) from last year, the disparity in the number of games played this season hinders our ability to draw any conclusions from the comparison. When we just compare it to this point last season, the average number of goals scored this season is actually slightly down. With the season still in the early stages of conference play, I expect the average number of goals scored this season to go down right around where it finished last year.  
+While the average number of goals scored this season is sightly up (2.75 to 2.90) from last year, the disparity in the number of games played this season hinders our ability to draw any conclusions from the comparison. When we just compare it to this point last season, the average number of goals scored this season is actually slightly down. With the season still in the early stages of conference play, I expect the average number of goals scored this season to go down right around where it finished last year.
 
+## Correlations
+
+```{r}
+library(tidyverse)
+
+correlations <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2024.csv")
+
+newcorrelations <- correlations |> 
+  mutate(
+    differential = goals - defensive_goals
+    )
+
+newcorrelations |> summarise(correlation = cor(differential, fouls, method="pearson"))
+
+newcorrelations |> summarise(correlation = cor(differential, yellow_cards, method="pearson"))
+
+fit <- lm(differential ~ fouls, data = newcorrelations)
+summary(fit)
+
+newcorrelations |> 
+  summarise(correlation = cor(differential, so_g, method="pearson"))
+
+net <- lm(differential ~ so_g, data = newcorrelations)
+summary(net)
+```
+## 2025 New Version (Defensive Shots on Goal)
+
+```{r}
+library(tidyverse)
+
+correlations_2025 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2025.csv")
+
+newcorrelations <- correlations_2025 |> 
+  mutate(
+    differential = team_score - opponent_score
+    )
+
+terps25 <- newcorrelations |> 
+  filter(team == "Maryland Terrapins, Terps")
+
+terps25 |> summarise(correlation = cor(differential, defensive_so_g, method="pearson"))
+
+fit <- lm(differential ~ defensive_so_g, data = terps25)
+summary(fit)
+
+net <- lm(differential ~ defensive_so_g, data = terps25)
+summary(net)
+```
+While you do need some offense to win soccer games — you can't win a game without scoring a goal — the biggest root of a team's success ia actually defense. More specifically, defensive shots on goal. Defensive shots on frame may not be the best metric to evaluate how good a team's defense is because you could be giving up a lot of non dangerous shots from outside the box that the goalkeeper easily saves. But there is a pretty strong correlation between the amount of shots on goal you give up and the outcome of the game. If your opponents are peppering your goal with shots and in Maryland's case you aren't producing many shots on frame offensively (in the defeats), you are more likely to lose games. That is why I think coaches need to focus on both recruiting good defenders and spend a bunch of time on defensive tactics to limit opposing attacks. If your defense is really good, you are usually in almost every game and have a chance to win. All it takes is one fluky goal and a really solid defensive effort to win games. You see a lot of teams in soccer score a goal and just sit back the rest of the game, and that often works.
