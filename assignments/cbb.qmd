@@ -1,0 +1,98 @@
+### Multiple Regression
+
+```{r}
+library(tidyverse)
+library(Hmisc)
+```
+
+```{r}
+logs <- read_csv("https://dwillis.github.io/sports-data-files/cbblogs1525.csv")
+```
+
+```{r}
+logs <- logs |> mutate(
+  Differential = TeamScore - OpponentScore, 
+  NetRebounds = TeamTotalRebounds - OpponentTotalRebounds,
+  TurnoverMargin = TeamTurnovers - OpponentTurnovers)
+```
+
+```{r}
+rebounds <- lm(Differential ~ NetRebounds, data=logs)
+summary(rebounds)
+```
+```{r}
+model1 <- lm(Differential ~ NetRebounds + TurnoverMargin, data=logs)
+summary(model1)
+```
+```{r}
+simplelogs <- logs |> select_if(is.numeric) |> select(-Game) |> select(Differential, NetRebounds, TurnoverMargin, TeamFGPCT, TeamTotalRebounds, OpponentFGPCT, OpponentTotalRebounds, TeamFTPCT)
+
+cormatrix <- rcorr(as.matrix(simplelogs))
+
+cormatrix$r
+```
+```{r}
+model2 <- lm(Differential ~ NetRebounds + TurnoverMargin + TeamFGPCT + OpponentFGPCT + NetFTPct, data=logs)
+summary(model2)
+```
+
+```{r}
+logs |> 
+  filter(Team == "Michigan" & Season == '2020-2021' | Team == "Wisconsin" & Season == '2019-2020' | Team == "Michigan State" & Season == '2018-2019' | Team == "Michigan State" & Season == '2017-2018' | Team == 'Illinois' & Season == '2021-2022' | Team == 'Purdue' & Season == '2022-2023' | Team == 'Purdue' & Season == '2023-2024' | Team == "Michigan State" & Season == '2024-2025') |> 
+  summarise(
+    meanNetRebounds = mean(NetRebounds),
+    meanTurnoverMargin = mean(TurnoverMargin),
+    meanTeamFGPCT = mean(TeamFGPCT),
+    meanOpponentFGPCT = mean(OpponentFGPCT)
+  )
+```
+```{r}
+# (netrebounds estimate * meanNetRebounds) + (turnover margin estimate * meanTurnoverMargin) + (TeamFGPCT estimate * meanTeamFGPCT) + (OpponentFGPCT estimate * meanOpponentFGPCT) + Intercept
+(0.660276*9.432099) + (-1.315355*1.711934) + (91.472656*0.4745391) + (-91.705986*0.4000823) + 0.230468
+```
+```{r}
+
+```
+
+```{r}
+logs |> 
+  filter(
+    Team == "Maryland" & Season == '2024-2025'
+    ) |> 
+  summarise(
+    meanNetRebounds = mean(NetRebounds),
+    meanTurnoverMargin = mean(TurnoverMargin),
+    meanTeamFGPCT = mean(TeamFGPCT),
+    meanOpponentFGPCT = mean(OpponentFGPCT)
+  )
+```
+```{r}
+(0.660276*2.472222) + (-1.315355*-3.444444) + (91.472656*0.4687778) + (-91.705986*0.4150278) + 0.230468
+```
+
+## My own model
+```{r}
+model3 <- lm(Differential ~ NetRebounds + TurnoverMargin + TeamFGPCT + OpponentFGPCT + TeamFTPCT, data=logs)
+summary(model3)
+```
+```{r}
+logs |> 
+  filter(
+    Team == "Maryland" & Season == '2024-2025'
+    ) |> 
+  summarise(
+    meanNetRebounds = mean(NetRebounds),
+    meanTurnoverMargin = mean(TurnoverMargin),
+    meanTeamFGPCT = mean(TeamFGPCT),
+    meanOpponentFGPCT = mean(OpponentFGPCT),
+    meanTeamFTPCT = mean (TeamFTPCT)
+  )
+```
+```{r}
+(0.660276*2.472222) + (-1.315355*-3.444444) + (91.472656*0.4687778) + (-91.705986*0.4150278) + (10.799775*0.7534167) + 0.230468
+```
+```
+
+I think adding a team's free throw percentage to the model is a good idea because they are essentially free points (even though that is far from the case in real games). Teams who usually shoot well from the free-throw line are usually able to add to their lead, especially in garbage time when the opponents are fouling them to try and extend the game. Good teams that go far in the tournament shoot a high percentage from the line, and capitalize on the easy shots.
+
+However, my initial thougts of its impact on the model were wrong. The Multiple R-Squared value barely went up and Maryland's expected average margin of victory soared above their actual average margin of victory (19.35 compared to around 14). I assumed that since a team's free throw percentage isn't actually calculated in their field goal percentage it would help the model. Nonetheless, a Multiple R-Squared value of 0.8988 is really good out of 1. This model should be able to closely predict the margin of victory a team should have and I would be interested to see how the five components factor into Maryland's point differential this season.
