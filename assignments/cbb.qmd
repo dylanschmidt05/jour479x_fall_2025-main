@@ -32,7 +32,7 @@ cormatrix <- rcorr(as.matrix(simplelogs))
 cormatrix$r
 ```
 ```{r}
-model2 <- lm(Differential ~ NetRebounds + TurnoverMargin + TeamFGPCT + OpponentFGPCT + NetFTPct, data=logs)
+model2 <- lm(Differential ~ NetRebounds + TurnoverMargin + TeamFGPCT + OpponentFGPCT, data=logs)
 summary(model2)
 ```
 

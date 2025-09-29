@@ -1,0 +1,71 @@
+### College Football Regression Analysis
+```{r}
+library(tidyverse)
+library(Hmisc)
+```
+
+### Part 1: Loading the data
+```{r}
+logs <- read_csv("https://dwillis.github.io/sports-data-files/footballlogs1124.csv")
+```
+
+### Part 2: Point Differential column
+```{r}
+logs <- logs |> mutate(pointDifferential = TeamScore - OpponentScore) 
+```
+
+### Part 3: Regression model with penalties
+
+```{r}
+penalties <- lm(pointDifferential ~ Penalties, data=logs)
+summary(penalties)
+```
+
+Because the p-value is less than 0.05, we can safely conclude that the association between the number of penalties and score differential is unlikely to be due to random chance. However, the resulting R-squared is very small, meaning that less than 0.04% of the variation in score differential can be explained by the number of penalties a team commits. 
+
+### Part 4: Multiple Regression Model
+
+```{r}
+logs <- logs |> mutate(
+  NetTurnovers = TotalTurnovers - DefTotalTurnovers, 
+  NetYards = OffensiveYards - DefYards,
+  NetFirstDowns = FirstDownTotal - DefFirstDownTotal,
+  NetRushingTDs = RushingTD - DefRushingTD,
+  NetPassingTDs = PassingTD - DefPassingTD) 
+simplelogs <- logs |> select_if(is.numeric) |> select(-Game) |> select(pointDifferential, NetTurnovers, NetYards, NetFirstDowns, NetRushingTDs, NetPassingTDs)
+
+cormatrix <- rcorr(as.matrix(simplelogs))
+
+cormatrix$r
+
+model <- lm(pointDifferential ~ NetTurnovers + NetYards + NetFirstDowns + NetRushingTDs + NetPassingTDs, data=logs)
+summary(model)
+```
+
+Net turnovers are crucial because winning the turnover battle often leads to better field position and more scoring opportunities. Net yards and net first downs show which team controls the field and clock, helping sustain drives and limit opponent’s opportunities. More net rushing and passing touchdowns mean your team is capitalizing on those drives with actual points. Turnovers and touchdowns especially create big point swings, often deciding games. Meanwhile, yardage and first downs reflect consistent dominance over time. 
+
+The multiple regression model significantly outperforms the simple model that used only penalties to predict point differential. While the penalties-only model explained virtually none of the variation (R² = 0.00036) and had a high residual standard error of 22.61, the expanded model with NetTurnovers, NetYards, NetFirstDowns, NetRushingTDs, and NetPassingTDs explained over 93% of the variation, with a much lower error of 5.91. All variables were statistically significant, with turnovers having a strong negative impact and yards and touchdowns contributing positively. Despite some correlation among predictors, multicollinearity does not appear to distort the results.
+
+### Part 5: Close games analysis
+
+```{r}
+close_games <- logs %>%
+  filter(pointDifferential >= -7 & pointDifferential <= 7)
+
+model_simple_close <- lm(pointDifferential ~ Penalties, data = close_games)
+summary(model_simple_close)
+
+model_multi_close <- lm(pointDifferential ~ NetTurnovers + NetYards + NetFirstDowns + 
+                        NetRushingTDs + NetPassingTDs, data = close_games)
+summary(model_multi_close)
+
+```
+
+To focus on tightly contested matchups, I defined “close games” as games decided by one possession (point differential between -7 and 7). The simple regression model using only penalties remained statistically significant but weak, with an R-squared of just 0.0006, meaning penalties explain almost none of the variation in outcomes, even in close games. Although the residual standard error dropped to 4.73, this is mainly due to the narrower range of score differentials. In contrast, the multiple regression model performed much better, with an R-squared of 0.3853 and a lower residual error of 3.71. While this is a decrease from the full dataset model, it still shows that performance metrics provide meaningful predictive value.
+
+### Part 6: Summary
+
+From this analysis, we’ve learned that penalties have a statistically significant but extremely weak relationship with point differential in football games. In both the full dataset and the subset of close games, the simple regression model showed a very low R-squared, meaning that penalties alone explain almost none of the variation in game outcomes. While more penalties are slightly associated with worse point differentials, the effect is too small to draw strong conclusions or use as a standalone predictor. However, when we shift to a multiple regression model that includes more impactful performance indicators—such as turnovers, net yards, and touchdowns—we see a much stronger and more meaningful relationships, especially in the full dataset and to a lesser degree in close games.
+
+This suggests that penalties might not tell a compelling story on their own, but they can still add value within a broader context. For journalism, this kind of finding is useful for adding depth or nuance rather than leading a story. For example, in an article about team discipline, coaching strategy, or how small mistakes affect tight games, penalties could serve as a supporting stat. They may not explain why a team won or lost outright, but they help complete the picture—especially in one-possession games where the margin for error is slim. In that sense, penalties can contribute meaningfully to a larger narrative about what separates good teams from great ones in close situations.
+
