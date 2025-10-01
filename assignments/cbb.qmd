@@ -91,8 +91,38 @@ logs |>
 ```{r}
 (0.660276*2.472222) + (-1.315355*-3.444444) + (91.472656*0.4687778) + (-91.705986*0.4150278) + (10.799775*0.7534167) + 0.230468
 ```
-```
 
 I think adding a team's free throw percentage to the model is a good idea because they are essentially free points (even though that is far from the case in real games). Teams who usually shoot well from the free-throw line are usually able to add to their lead, especially in garbage time when the opponents are fouling them to try and extend the game. Good teams that go far in the tournament shoot a high percentage from the line, and capitalize on the easy shots.
 
 However, my initial thougts of its impact on the model were wrong. The Multiple R-Squared value barely went up and Maryland's expected average margin of victory soared above their actual average margin of victory (19.35 compared to around 14). I assumed that since a team's free throw percentage isn't actually calculated in their field goal percentage it would help the model. Nonetheless, a Multiple R-Squared value of 0.8988 is really good out of 1. This model should be able to closely predict the margin of victory a team should have and I would be interested to see how the five components factor into Maryland's point differential this season.
+
+### Residuals
+```{r}
+residualmodel <- logs |> mutate(differential = TeamScore - OpponentScore, FGPctMargin = TeamFGPCT - OpponentFGPCT)
+
+fit <- lm(differential ~ FGPctMargin, data = residualmodel)
+summary(fit)
+
+residualmodel <- residualmodel |> filter(!is.na(FGPctMargin))
+
+residualmodel <- residualmodel |> mutate(predicted = predict(fit), residuals = residuals(fit))
+
+residualmodel |> filter(Team == 'Maryland') |> arrange(desc(residuals)) |> select(Date, Team, Opponent, W_L, differential, FGPctMargin, predicted, residuals)
+```
+```{r}
+fouls <- logs |> 
+  mutate(
+    differential = TeamScore - OpponentScore, 
+    TotalFouls = TeamPersonalFouls+OpponentPersonalFouls
+  )
+
+pfit <- lm(differential ~ TotalFouls, data = fouls)
+summary(pfit)
+
+fouls <- fouls |> filter(!is.na(TotalFouls))
+fouls$predicted <- predict(pfit)
+fouls$residuals <- residuals(pfit)
+
+fouls |> arrange(desc(residuals)) |> select(Team, Opponent, W_L, TeamScore, OpponentScore, TotalFouls, residuals) |> filter(!is.na(Opponent))
+```
+

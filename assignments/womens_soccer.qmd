@@ -180,3 +180,51 @@ net <- lm(differential ~ defensive_so_g, data = terps25)
 summary(net)
 ```
 While you do need some offense to win soccer games — you can't win a game without scoring a goal — the biggest root of a team's success ia actually defense. More specifically, defensive shots on goal. Defensive shots on frame may not be the best metric to evaluate how good a team's defense is because you could be giving up a lot of non dangerous shots from outside the box that the goalkeeper easily saves. But there is a pretty strong correlation between the amount of shots on goal you give up and the outcome of the game. If your opponents are peppering your goal with shots and in Maryland's case you aren't producing many shots on frame offensively (in the defeats), you are more likely to lose games. That is why I think coaches need to focus on both recruiting good defenders and spend a bunch of time on defensive tactics to limit opposing attacks. If your defense is really good, you are usually in almost every game and have a chance to win. All it takes is one fluky goal and a really solid defensive effort to win games. You see a lot of teams in soccer score a goal and just sit back the rest of the game, and that often works.
+
+### Women's soccer residuals
+
+```{r}
+library(tidyverse)
+
+matches_2025 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2025.csv")
+
+matches_2025 <- matches_2025 |> mutate(
+  differential = team_score - opponent_score, 
+  net_so_g = so_g - defensive_so_g,
+  net_points = points - defensive_points,
+  net_pk = pk - defensive_pk,
+  net_red_cards = red_cards - defensive_red_cards)
+
+model <- lm(differential ~ net_so_g + net_points + net_pk + net_red_cards, data=matches_2025)
+summary(model)
+```
+I chose net shots on goal, net points, net penalty kicks, and net red cards as predictors because they capture the key ways teams create advantages over their opponents: generating more quality scoring chances (net shots on goal), producing more overall offensive output (net points), earning or conceding decisive scoring opportunities (penalty kicks), and maintaining discipline to avoid playing shorthanded (red cards). Together, these variables directly influence whether a team outscores its opponent, making them logical predictors of score differential. The model explains nearly all the variation in outcomes (Adjusted R-Squared = 0.9758), and the residuals are tightly centered around zero (median ≈ -0.002, interquartile range about -0.23 to 0.23), meaning the model predicts match results with very high accuracy and little systematic error.
+
+```{r}
+fit <- lm(differential ~ net_so_g + net_points + net_pk + net_red_cards, data=matches_2025)
+summary(fit)
+
+residualmodel <- matches_2025 |> mutate(predicted = predict(fit), residuals = residuals(fit))
+
+residual_model_top10 <- matches_2025 |> 
+  mutate(predicted = predict(fit), 
+         residuals = residuals(fit)) |> 
+  arrange(desc(residuals)) |> 
+  slice_head(n = 10)
+
+residual_model_bottom10 <- matches_2025 |> 
+  mutate(predicted = predict(fit), 
+         residuals = residuals(fit)) |> 
+  arrange(residuals) |> 
+  slice_head(n = 10)
+
+```
+Something I notice about most of these outlier games is that they are blowouts. For example, when Michigan State beat Milwaukee 9-0 back in August. The model predicted Michigan State to win by 7.5 goals instead of nine. The games that aren't blowouts but are still in the top 10 are because a team was predicted to win by a lot of goals but only narrowly won. 
+
+```{r}
+residualmodel |> filter(team == 'Maryland Terrapins, Terps') |> arrange(desc(residuals)) |> select(date, team, opponent, team_score, opponent_score, differential, predicted, residuals)
+```
+
+While the model is pretty strong at predicting the differential of games, Maryland's biggest over-performance was against Penn State, when the model expected the Terps to lose by more than four. The Terps' biggest under-performance was against Saint Francis because the model expected them to win by more than five goals. There is not really much of a story because the model predicts the outcome of Maryland's games by within one goal.
+
+If I were writing a story, I would want to take a deeper dive into the stats of the Michigan State vs Milwaukee game to see where the model got the goal differential slightly wrong. I would want to see what areas Michigan State wasn't good enough in, maybe turning shots on goal into goals.
