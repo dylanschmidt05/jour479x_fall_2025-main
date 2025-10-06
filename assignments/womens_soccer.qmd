@@ -228,3 +228,36 @@ residualmodel |> filter(team == 'Maryland Terrapins, Terps') |> arrange(desc(res
 While the model is pretty strong at predicting the differential of games, Maryland's biggest over-performance was against Penn State, when the model expected the Terps to lose by more than four. The Terps' biggest under-performance was against Saint Francis because the model expected them to win by more than five goals. There is not really much of a story because the model predicts the outcome of Maryland's games by within one goal.
 
 If I were writing a story, I would want to take a deeper dive into the stats of the Michigan State vs Milwaukee game to see where the model got the goal differential slightly wrong. I would want to see what areas Michigan State wasn't good enough in, maybe turning shots on goal into goals.
+
+### Z-Scores
+
+```{r}
+library(tidyverse)
+
+matches_2025 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2025.csv")
+
+teamquality <- matches_2025 |> 
+  mutate(sog_pct = so_g/sh_att, def_sog_pct = defensive_so_g/defensive_sh_att) |> 
+  filter(!is.na(sog_pct), !is.na(def_sog_pct)) |> 
+  group_by(team) |> 
+  summarise(
+    avg_goals = mean(goals),
+    avg_def_goals = mean(defensive_goals),
+    avg_sog_pct = mean(sog_pct),
+    avg_def_sog_pct = mean(def_sog_pct),
+    avg_assists = mean(assists),
+    avg_def_assists = mean(defensive_assists)
+  )
+
+teamzscore <- teamquality |> 
+  mutate(
+    goalsZscore = as.numeric(scale(avg_goals, center = TRUE, scale = TRUE)),
+    defgoalsZscore = as.numeric(scale(avg_def_goals, center = TRUE, scale = TRUE)) * -1,
+    sogpctZscore = as.numeric(scale(avg_sog_pct, center = TRUE, scale = TRUE)),
+    defsogpctZscore = as.numeric(scale(avg_def_sog_pct, center = TRUE, scale = TRUE)) * -1,
+    assistsZscore = as.numeric(scale(avg_assists, center = TRUE, scale = TRUE)),
+    defassistsZscore = as.numeric(scale(avg_def_assists, center = TRUE, scale = TRUE)) * -1,
+    TotalZscore = goalsZscore + defgoalsZscore + sogpctZscore + defsogpctZscore + assistsZscore + defassistsZscore
+  ) 
+```
+

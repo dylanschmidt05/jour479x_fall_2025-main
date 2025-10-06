@@ -1,0 +1,51 @@
+---
+title: "wbb"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+wbb_stats <- read_csv("https://dwillis.github.io/sports-data-files/wbbstats1525.csv")
+```
+
+```{r}
+wbb_new_stats <- wbb_stats |> 
+  mutate (
+    ppg = ForPoints/Games,
+    Opp_ppg = OppPoints/Games,
+    TotalRebounds_per_game = TotalRebounds/Games,
+    Steals_per_game = Steals/Games,
+    Turnovers_per_game = Turnovers/Games,
+    )
+```
+
+```{r}
+teamzscore <- wbb_new_stats |> 
+  mutate(
+    Pointszscore = as.numeric(scale(ppg, center = TRUE, scale = TRUE)),
+    OppPointszscore = as.numeric(scale(Opp_ppg, center = TRUE, scale = TRUE)) *-1,
+    FGzscore = as.numeric(scale(FieldGoalPCT, center = TRUE, scale = TRUE)),
+    RebZscore = as.numeric(scale(TotalRebounds_per_game, center = TRUE, scale = TRUE)),
+    TurnoversZscore = as.numeric(scale(Turnovers_per_game, center = TRUE, scale = TRUE)) *-1,
+    StealsZscore = as.numeric(scale(Steals_per_game, center = TRUE, scale = TRUE)),
+    TotalZscore = Pointszscore + OppPointszscore + FGzscore + RebZscore + TurnoversZscore + StealsZscore
+  )
+```
+
+The highest performing teams are either from UCONN, South Carolina or Baylor, which makes the most sense given their periods of dominance in women's college basketball. The three programs have combined for seven of the last ten national championships and continuously produced quality teams. The biggest surprise to me is how far down the 2024 Iowa team is, when they made the run to the national championship game. With Caitlin Clark leading the charge, I figured they would get a big boost from the offensive metrics. The 2017 Maryland team finds their way towards the top of the list and the 2020 Maryland team isn't too far behind.
+
+```{r}
+teamzscore |> 
+  filter(School == "Maryland") |> 
+  arrange(desc(TotalZscore)) |>
+  select(Season, School, TotalZscore)
+```
+
+The top two Maryland teams are the 2017 and 2020 ones. The 2017 team made a run to the Sweet 16 and likely would have advanced further if they didn't run into a red-hot Oregon 10-seed. What is most surprising to me is that the 2020 team is second on the list. If not for the pandemic, that 2020 team was destined for at least the Final Four, maybe even a national championship. The depth and talent on that roster is without a doubt the best Brenda Frese has had.
+
+A story idea just focused on Maryland would be how last year's team over performed relative to the other Maryland teams ahead of it on the list. While they may not have been the most talented team, making the Sweet 16 and nearly beating the eventual runners-up is impressive. Last year's team just found ways to win games.
+
+An overall story idea is comparing how the national championship winners did in this metric versus the team they played in the championship game. I think it would be interesting to see if the "best" team really won or if the winner just performed really well in that game or the loser just had a really bad game.
