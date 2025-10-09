@@ -1,0 +1,8 @@
+---
+title: "background"
+format: html
+---
+
+I have decided to pursue my question about whether there is a relationship between the number of international players a men's soccer team had on its roster last year and their eventual win total.
+
+The data doesn't already exist in a data set form but I can easily dig through each team's roster last year and count the number of international players they had. The number of wins is just listed on the team's website. I was planning to just collect data from last year, but if you think more data is better, I can expand it to the last two or three years. While you suggested I should just conduct the analysis on P4 teams, I think it would be better to do Division I as a whole given that some of the men's soccer powerhouses are outside those conferences. Teams like Marshall and Vermont were part of the national championship game last year. A lot of the best teams in the country this year are non Power Four too.
