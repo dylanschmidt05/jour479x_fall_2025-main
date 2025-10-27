@@ -49,3 +49,5 @@ ggplot() +
 ```
 
 The biggest challenge I will have is filtering through all the data to find the players that weren't born in the United States and exclude them from the list. Once I have a data set of only international players, I can easily group them by team and figure out what schools had the most international players last year. I'll need to find a way to add in that team's win total into the team_total data set to actually answer my question of whether more international players equates to more team wins.
+
+The dataset is not working anymore so I couldn't attempt to filter out the non-international players.
