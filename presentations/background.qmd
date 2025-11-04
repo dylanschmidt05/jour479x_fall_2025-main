@@ -3,51 +3,259 @@ title: "background"
 format: html
 ---
 
-I have decided to pursue my question about whether there is a relationship between the number of international players a men's soccer team had on its roster last year and their eventual win total.
 
-The data doesn't already exist in a data set form but I can easily dig through each team's roster last year and count the number of international players they had. The number of wins is just listed on the team's website. I was planning to just collect data from last year, but if you think more data is better, I can expand it to the last two or three years. While you suggested I should just conduct the analysis on P4 teams, I think it would be better to do Division I as a whole given that some of the men's soccer powerhouses are outside those conferences. Teams like Marshall and Vermont were part of the national championship game last year. A lot of the best teams in the country this year are non Power Four too.
 
 ```{r}
 library(tidyverse)
-library(scales)
+library(dplyr)
+library(stringr)
 ```
 
 ```{r}
-international_players_2024 <- read_csv("https://raw.githubusercontent.com/Sports-Roster-Data/mens-soccer/refs/heads/main/combined_rosters_2024.csv")
-```
-## Not sure how to filter out the players born in the United States but I would want to do that in this code block
-```{r}
-division_one_international_players_2024 <- international_players_2024 |> 
-  filter(division == "I") 
+international_players_2024 <-read_csv("https://raw.githubusercontent.com/Sports-Roster-Data/mens-soccer/refs/heads/main/data/output/combined_rosters_2024.csv")
+wins_data <- read_csv("https://raw.githubusercontent.com/dylanschmidt05/jour479x_fall_2025-main/refs/heads/main/presentations/2024_wins.csv")
 ```
 
-## These totals will be much smaller once American-born players are factored out
 ```{r}
-team_total <- division_one_international_players_2024 |> 
+international_players_2024 |> 
+  group_by(hometown) |> 
   summarise(
     total = n()
-  ) |> 
+  )
+
 ```
 
-## Top 5 teams (will look entirelty different later on)
 ```{r}
-top_seven <- team_total |> 
-    arrange(desc(total)) |> 
-    top_n(5)
+state_abbrevs <- c(
+  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD",
+  "MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC",
+  "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"
+)
+
+state_names <- c(
+  "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","Florida","Georgia",
+  "Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland",
+  "Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey",
+  "New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina",
+  "South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming","District of Columbia", "Hawai'i", "PENN", "WISC", "OREG"
+)
+
+state_short <- c(
+  "Ala","Ariz","Ark","Calif","Colo","Conn","Del","Fla","Ga","Ill","Ind","Iowa","Kan","Ky","La","Mass",
+  "Mich","Minn","Miss","Mo","Mont","Neb","Nev","N.H","N.J","N.M","N.Y.","N.C","N.D","Okla","Ore","Pa","R.I",
+  "S.C","S.D","Tenn","Tex","Vt","Va","Wash","Wis","W.Va","Wyo","D.C", "Flo", "Vir", "CALI", "NY", "FLA"
+)
+major_us_cities <- c("INDIANAPOLIS", "ORLANDO", "CINCINNATI", "LAS VEGAS",  "NA")
+
+state_pattern <- paste0(
+  "\\b(",
+  paste(c(
+    state_abbrevs,
+    toupper(state_names),
+    toupper(state_short),
+    major_us_cities
+  ), collapse = "|"),
+  ")\\b"
+)
+
+# --- Apply classification ---
+rosters_labeled <- international_players_2024 |> 
+  mutate(
+    hometown_clean = toupper(str_trim(as.character(hometown))),
+    player_origin = case_when(
+      str_detect(hometown_clean, state_pattern) ~ "American",
+      str_detect(hometown_clean, "USA|U\\.S\\.|UNITED STATES|WASHINGTON D\\.C\\.") ~ "American",
+      TRUE ~ "International"
+    )
+  )
+
+foreign_countries <- c(
+  "CANADA","MEXICO","ENGLAND","FRANCE","SPAIN","ITALY","GERMANY","IRELAND","SCOTLAND",
+  "NETHERLANDS","BELGIUM","SWEDEN","NORWAY","DENMARK","FINLAND","CZECH REPUBLIC","AUSTRIA",
+  "CROATIA","SWITZERLAND","GREECE","ICELAND","PORTUGAL","PANAMA","BRAZIL","ARGENTINA","CHILE",
+  "COLOMBIA","COSTA RICA","HAITI","HONDURAS","JAMAICA","PUERTO RICO","EL SALVADOR","TRINIDAD",
+  "BARBADOS","JAPAN","CHINA","INDIA","KOREA","AUSTRALIA","NEW ZEALAND","NIGERIA","GHANA","SOUTH AFRICA", "SOUTH KOREA", "TRINIDAD AND TOBAGO"
+)
+
+# --- Regex patterns ---
+state_pattern <- paste0(
+  "\\b(",
+  paste(
+    c(state_abbrevs, toupper(state_names), toupper(state_short), major_us_cities),
+    collapse = "|"
+  ),
+  ")\\b"
+)
+
+foreign_pattern <- paste0("\\b(", paste(foreign_countries, collapse = "|"), ")\\b")
+
+# --- Apply classification safely ---
+rosters_labeled <- international_players_2024 %>%
+  mutate(
+    hometown_clean = hometown %>%
+  toupper() %>%
+  str_replace_all("\\.", "") %>%   # remove periods (so N.Y. → NY)
+  str_replace_all(",", "") %>%     # remove commas
+  str_trim(),
+    player_origin = case_when(
+      # If it contains a known foreign country → International (always wins)
+      str_detect(hometown_clean, foreign_pattern) ~ "International",
+      # If it contains US state, short name, or major US city → American
+      str_detect(hometown_clean, state_pattern) ~ "American",
+      # If it mentions USA, United States, or D.C. → American
+      str_detect(hometown_clean, "USA|U\\.S\\.|UNITED STATES|WASHINGTON D\\.C\\.") ~ "American",
+      # Otherwise → International
+      TRUE ~ "American"
+    )
+  )
+
+```
+
+```{r}
+
+division_one_rosters_labeled <- rosters_labeled |> 
+  filter(division == "I")
+
+division_one_international_players <- division_one_rosters_labeled |> 
+  filter(player_origin == "International")
+```
+
+```{r}
+foreign_pattern <- paste0("\\b(", paste(foreign_countries, collapse = "|"), ")\\b")
+
+rosters_with_country <- division_one_international_players %>%
+  mutate(
+    hometown_clean = toupper(str_replace_all(hometown, ",", "")),
+    country = str_extract(hometown_clean, foreign_pattern),
+    country = ifelse(is.na(country),
+                     str_extract(hometown_clean, "\\b\\w+(?:\\s+\\w+)?$"),
+                     country)
+  )
+
+```
+
+```{r}
+team_totals <- rosters_with_country |> 
+  group_by(team) |> 
+  select(team, name, country) |> 
+  summarise (
+    total_international = n()
+  ) |> 
+  rename(School = team)
+
+```
+
+```{r}
+team_totals <- team_totals |> left_join(wins_data, by="School")
+```
+
+```{r}
+team_totals |> summarise(correlation = cor(total_international, Wins, method="pearson"))
+```
+
+```{r}
+team_totals |>
+  ggplot(aes(x = total_international, y = Wins)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "Number of international players", y = "Team's wins last season", title = "Scatterplot of total number of international players vs team's wins")
+```
+
+```{r}
+top_ten_countries <- rosters_with_country |> 
+  group_by(country) |> 
+  summarise (
+    country_total = n()
+  ) |> 
+  arrange(desc(country_total)) |> 
+  top_n(10)
+```
+
+```{r}
+ggplot() + 
+  geom_bar(
+    data=top_ten_countries, 
+    aes(x=reorder(country, -country_total),
+        weight=country_total)) + 
+  labs(
+    title="Comparing counties based on number of players in college soccer", 
+    subtitle="Germany and England are by far the most represented countries in division one soccer.",
+    x="Country", 
+    y="Division I players in college soccer") + 
+  theme_minimal() + 
+  coord_flip()
+```
+
+```{r}
+international_players_by_position <- rosters_with_country |> 
+  filter(position == "Goalkeeper" | position == "Defender" | position == "Midfielder" | position == "Forward") |> 
+  group_by(position) |> 
+  summarise (
+    position_total = n()
+  ) |> 
+  arrange(desc(position_total))
+  
+```
+
+```{r}
+ggplot() + 
+  geom_bar(
+    data=international_players_by_position, 
+    aes(x=reorder(position, -position_total),
+        weight=position_total)) + 
+  labs(
+    title="Comparing international players at each position", 
+    subtitle="International midfielders are very common in college soccer.",
+    x="Position", 
+    y="Position total") + 
+  theme_minimal() + 
+  coord_flip()
+```
+
+```{r}
+international_players_by_class <- rosters_with_country |> 
+    filter(class == "Fr." | class == "So." | class == "Jr." | class == "Sr." | class == "Gr.") |> 
+  group_by(class) |> 
+  summarise (
+    class_total = n()
+  ) |> 
+  arrange(desc(class_total))
+  
+```
+
+```{r}
+ggplot() + 
+  geom_bar(
+    data=international_players_by_class, 
+    aes(x=reorder(class, -class_total),
+        weight=class_total)) + 
+  labs(
+    title="Comparing international players based on their year", 
+    subtitle="There have been less international players over the past two seasons.",
+    x="Class", 
+    y="Class total") + 
+  theme_minimal() + 
+  coord_flip()
+```
+```{r}
+top_ten_team_totals <- team_totals |>
+  select(School, total_international) |> 
+  arrange(desc(total_international)) |> 
+  top_n(10)
 ```
 
 
 ```{r}
 ggplot() + 
   geom_bar(
-    data=top_seven, 
-    aes(
-      x=reorder(team, -total), 
-      weight=total
-    )
-)
+    data=top_ten_team_totals, 
+    aes(x=reorder(School, -total_international),
+        weight=total_international)) + 
+  labs(
+    title="Schools based on their number of international players ", 
+    subtitle="Last season's NCAA Tournament runner-up had the second-most international players.",
+    x="School", 
+    y="Total") + 
+  theme_minimal() + 
+  coord_flip()
 ```
-
-The biggest challenge I will have is filtering through all the data to find the players that weren't born in the United States and exclude them from the list. Once I have a data set of only international players, I can easily group them by team and figure out what schools had the most international players last year. I'll need to find a way to add in that team's win total into the team_total data set to actually answer my question of whether more international players equates to more team wins.
-
-The dataset is not working anymore so I couldn't attempt to filter out the non-international players.
