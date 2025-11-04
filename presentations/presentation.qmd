@@ -1,0 +1,318 @@
+---
+title: "Analyzing the Relationship Between International Players and Wins in Division I Men’s Soccer"
+Author: Dylan Schmidt
+Date: 11/1/25
+format: html
+---
+
+### Introduction
+
+Maryland men's soccer head coach Sasho Cirovski has always talked about the impact international players have on college soccer and his individual team. His point is backed up. 22 of the Terps' 36 goals scored this season have come from foreign-born players, with Frenchman Stephane Njike and Ugandan Sadam Masereka each tallying a team-high six goals. Eight players in Maryland's starting lineup are from abroad — Center back Tristen Rose, right back Jace Clark and attacking midfielder Albi Ndrenika are the exceptions.
+
+Looking at the team from a broader scale, this season, the Terps have their highest total of international players under Cirovski's 33-year tenure. Maryland has 13 foreign-born players on the roster out of their 30 spots, which produces the highest percentage in the Big Ten. To further my initial belief coming in, the Terps are the top team in the Big Ten standings and are poised to take over the No. 1 ranking in the country when the poll comes out today.
+
+This trend is noticeable in college soccer as a whole. The average number of international players on the last four teams in the NCAA Tournament last season was 12.25, led by an astounding 24-player total from eventual runners-up Marshall. This sparked my interest to explore how the number of international players on Division I men’s soccer rosters relates to overall team success, measured by the number of wins during the 2024 season. 
+
+The purpose of this analysis is to determine whether programs that recruit more international players tend to perform better on the field, as well as to identify which countries produce the most college soccer talent. By combining roster and performance data, cleaning and classifying hometowns, and visualizing the results, this notebook provides insight into global recruitment trends in collegiate soccer and their connection to team outcomes.
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(stringr)
+```
+
+```{r}
+international_players_2024 <-read_csv("https://raw.githubusercontent.com/Sports-Roster-Data/mens-soccer/refs/heads/main/data/output/combined_rosters_2024.csv")
+wins_data <- read_csv("https://raw.githubusercontent.com/dylanschmidt05/jour479x_fall_2025-main/refs/heads/main/presentations/2024_wins.csv")
+```
+
+### Classifying players by origin
+
+To determine whether players were American or international, I relied on the hometown variable in the roster dataset. Because hometowns are written in many different formats, I created a series of regular expression (regex) patterns to match U.S. states (both abbreviations and full names) and common city names, as well as a comprehensive list of foreign countries. Players whose hometowns matched any of the U.S. identifiers were classified as “American,” while those containing foreign countries were labeled “International.” Regex classification allows for flexibility and consistency when working with messy text data.
+
+```{r}
+international_players_2024 |> 
+  group_by(hometown) |> 
+  summarise(
+    total = n()
+  )
+
+```
+
+```{r}
+state_abbrevs <- c(
+  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD",
+  "MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC",
+  "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"
+)
+
+state_names <- c(
+  "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","Florida","Georgia",
+  "Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland",
+  "Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey",
+  "New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina",
+  "South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming","District of Columbia", "Hawai'i", "PENN", "WISC", "OREG"
+)
+
+state_short <- c(
+  "Ala","Ariz","Ark","Calif","Colo","Conn","Del","Fla","Ga","Ill","Ind","Iowa","Kan","Ky","La","Mass",
+  "Mich","Minn","Miss","Mo","Mont","Neb","Nev","N.H","N.J","N.M","N.Y.","N.C","N.D","Okla","Ore","Pa","R.I",
+  "S.C","S.D","Tenn","Tex","Vt","Va","Wash","Wis","W.Va","Wyo","D.C", "Flo", "Vir", "CALI", "NY", "FLA"
+)
+major_us_cities <- c("INDIANAPOLIS", "ORLANDO", "CINCINNATI", "LAS VEGAS",  "NA")
+
+state_pattern <- paste0(
+  "\\b(",
+  paste(c(
+    state_abbrevs,
+    toupper(state_names),
+    toupper(state_short),
+    major_us_cities
+  ), collapse = "|"),
+  ")\\b"
+)
+
+# --- Apply classification ---
+rosters_labeled <- international_players_2024 |> 
+  mutate(
+    hometown_clean = toupper(str_trim(as.character(hometown))),
+    player_origin = case_when(
+      str_detect(hometown_clean, state_pattern) ~ "American",
+      str_detect(hometown_clean, "USA|U\\.S\\.|UNITED STATES|WASHINGTON D\\.C\\.") ~ "American",
+      TRUE ~ "International"
+    )
+  )
+
+foreign_countries <- c(
+  "CANADA","MEXICO","ENGLAND","FRANCE","SPAIN","ITALY","GERMANY","IRELAND","SCOTLAND",
+  "NETHERLANDS","BELGIUM","SWEDEN","NORWAY","DENMARK","FINLAND","CZECH REPUBLIC","AUSTRIA",
+  "CROATIA","SWITZERLAND","GREECE","ICELAND","PORTUGAL","PANAMA","BRAZIL","ARGENTINA","CHILE",
+  "COLOMBIA","COSTA RICA","HAITI","HONDURAS","JAMAICA","PUERTO RICO","EL SALVADOR","TRINIDAD",
+  "BARBADOS","JAPAN","CHINA","INDIA","KOREA","AUSTRALIA","NEW ZEALAND","NIGERIA","GHANA","SOUTH AFRICA", "SOUTH KOREA", "TRINIDAD AND TOBAGO"
+)
+
+# --- Regex patterns ---
+state_pattern <- paste0(
+  "\\b(",
+  paste(
+    c(state_abbrevs, toupper(state_names), toupper(state_short), major_us_cities),
+    collapse = "|"
+  ),
+  ")\\b"
+)
+
+foreign_pattern <- paste0("\\b(", paste(foreign_countries, collapse = "|"), ")\\b")
+
+# --- Apply classification safely ---
+rosters_labeled <- international_players_2024 %>%
+  mutate(
+    hometown_clean = hometown %>%
+  toupper() %>%
+  str_replace_all("\\.", "") %>%   # remove periods (so N.Y. → NY)
+  str_replace_all(",", "") %>%     # remove commas
+  str_trim(),
+    player_origin = case_when(
+      # If it contains a known foreign country → International (always wins)
+      str_detect(hometown_clean, foreign_pattern) ~ "International",
+      # If it contains US state, short name, or major US city → American
+      str_detect(hometown_clean, state_pattern) ~ "American",
+      # If it mentions USA, United States, or D.C. → American
+      str_detect(hometown_clean, "USA|U\\.S\\.|UNITED STATES|WASHINGTON D\\.C\\.") ~ "American",
+      # Otherwise → International
+      TRUE ~ "American"
+    )
+  )
+
+```
+
+### Focusing on Division I
+
+Because Division I is the most competitive and widely represented level of college soccer, I filtered the dataset to include only these programs. This ensures the analysis compares teams within a consistent competitive context.
+
+```{r}
+
+division_one_rosters_labeled <- rosters_labeled |> 
+  filter(division == "I")
+
+division_one_international_players <- division_one_rosters_labeled |> 
+  filter(player_origin == "International")
+```
+
+### Identifying International Players and Their Countries
+
+After filtering for Division I, I extracted the specific countries for all players labeled as international. This step enables analysis of which nations contribute most to Division I rosters. When a country name was not explicitly stated, the final word of the hometown field was used as a proxy.
+
+```{r}
+foreign_pattern <- paste0("\\b(", paste(foreign_countries, collapse = "|"), ")\\b")
+
+rosters_with_country <- division_one_international_players %>%
+  mutate(
+    hometown_clean = toupper(str_replace_all(hometown, ",", "")),
+    country = str_extract(hometown_clean, foreign_pattern),
+    country = ifelse(is.na(country),
+                     str_extract(hometown_clean, "\\b\\w+(?:\\s+\\w+)?$"),
+                     country)
+  )
+
+```
+
+### Aggregating Team Data and Joining Win Totals
+
+I then calculated the number of international players per school and joined that information with team win totals. This merge allows us to test whether teams with more international players won more games.
+```{r}
+team_totals <- rosters_with_country |> 
+  group_by(team) |> 
+  select(team, name, country) |> 
+  summarise (
+    total_international = n()
+  ) |> 
+  rename(School = team)
+
+team_totals <- team_totals |> left_join(wins_data, by="School")
+```
+### Correlation Analysis
+
+To measure the relationship between international players and team wins, I used Pearson’s correlation coefficient, which is appropriate for continuous, linear variables. This test provides a quantitative measure of whether having more international players tends to coincide with higher win totals.
+
+```{r}
+team_totals |> summarise(correlation = cor(total_international, Wins, method="pearson"))
+```
+
+### Visualizing the Relationship
+
+The following scatterplot visualizes the relationship between international player counts and total wins. Each point represents a Division I team, with a red regression line showing the general trend.
+
+```{r}
+team_totals |>
+  ggplot(aes(x = total_international, y = Wins)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "Number of international players", y = "Team's wins last season", title = "Scatterplot of total number of international players vs team's wins")
+```
+
+### Countries Producing the Most Division I Players
+
+Next, I analyzed which countries send the most players to U.S. college soccer. Identifying the top ten countries shows where most foreign talent originates and how global recruiting has shaped NCAA rosters.
+
+```{r}
+top_ten_countries <- rosters_with_country |> 
+  group_by(country) |> 
+  summarise (
+    country_total = n()
+  ) |> 
+  arrange(desc(country_total)) |> 
+  top_n(10)
+```
+
+```{r}
+ggplot() + 
+  geom_bar(
+    data=top_ten_countries, 
+    aes(x=reorder(country, -country_total),
+        weight=country_total)) + 
+  labs(
+    title="Comparing counties based on number of players in college soccer", 
+    subtitle="Germany and England are by far the most represented countries in division one soccer.",
+    x="Country", 
+    y="Division I players in college soccer") + 
+  theme_minimal() + 
+  coord_flip()
+```
+
+### International Players by Position
+
+I also examined which positions are most common among international players. This helps reveal where international athletes are most represented and what types of roles they fill on college teams.
+
+```{r}
+international_players_by_position <- rosters_with_country |> 
+  filter(position == "Goalkeeper" | position == "Defender" | position == "Midfielder" | position == "Forward") |> 
+  group_by(position) |> 
+  summarise (
+    position_total = n()
+  ) |> 
+  arrange(desc(position_total))
+  
+```
+
+```{r}
+ggplot() + 
+  geom_bar(
+    data=international_players_by_position, 
+    aes(x=reorder(position, -position_total),
+        weight=position_total)) + 
+  labs(
+    title="Comparing international players at each position", 
+    subtitle="International midfielders are very common in college soccer.",
+    x="Position", 
+    y="Position total") + 
+  theme_minimal() + 
+  coord_flip()
+```
+
+### International Players by Class
+
+Finally, I explored how international players are distributed across academic years. Comparing first-year and senior players provides insight into how international recruiting has evolved and how these athletes are retained over time.
+
+```{r}
+international_players_by_class <- rosters_with_country |> 
+    filter(class == "Fr." | class == "So." | class == "Jr." | class == "Sr." | class == "Gr.") |> 
+  group_by(class) |> 
+  summarise (
+    class_total = n()
+  ) |> 
+  arrange(desc(class_total))
+  
+```
+
+```{r}
+ggplot() + 
+  geom_bar(
+    data=international_players_by_class, 
+    aes(x=reorder(class, -class_total),
+        weight=class_total)) + 
+  labs(
+    title="Comparing international players based on their year", 
+    subtitle="There have been less international players over the past two seasons.",
+    x="Class", 
+    y="Class total") + 
+  theme_minimal() + 
+  coord_flip()
+```
+```{r}
+top_ten_team_totals <- team_totals |>
+  select(School, total_international) |> 
+  arrange(desc(total_international)) |> 
+  top_n(10)
+```
+
+
+```{r}
+ggplot() + 
+  geom_bar(
+    data=top_ten_team_totals, 
+    aes(x=reorder(School, -total_international),
+        weight=total_international)) + 
+  labs(
+    title="Schools based on their number of international players ", 
+    subtitle="Last season's NCAA Tournament runner-up had the second-most international players.",
+    x="School", 
+    y="Total") + 
+  theme_minimal() + 
+  coord_flip()
+```
+
+### Conclusion
+
+Initially, I expected to find that teams with more international players would perform better, given that international recruits bring some professional experience, a diverse skillset and are typically on the more veteran side. However, the data did not strongly support this hypothesis. The correlation between international representation and wins was weak, suggesting that international presence alone does not determine team success. This finding was surprising, as I entered the analysis believing that programs that invest more in global scouting would gain a measurable competitive advantage.
+
+Upon reflection, this result highlights how team success is far more multifaceted than simple roster composition. Factors like coaching quality, tactical style, player development, and team chemistry likely play larger roles in determining outcomes. While international players certainly enhance the diversity and skill base of college soccer, their presence does not automatically translate into more wins. In fact, some programs with fewer international athletes performed exceptionally well, demonstrating that domestic recruiting pipelines remain equally capable of producing elite teams.
+
+This analysis also emphasizes how global soccer has influenced the college game. The increasing number of international players shows that Division I programs continue to expand their reach, but it also suggests that success depends on effectively integrating diverse players into cohesive units. My initial belief that international recruitment was a direct pathway to competitive success was challenged by this evidence. Instead, the data reveals that while international athletes enrich the quality and character of the sport, success in college soccer remains grounded in balance—between domestic and international talent, between individual skill and team unity.
+
+### Addressing any questions
+
+While there is a chance some of the international players got left out from the final dataset because their hometown wasn't listed in the initial data collection, I don't feel like that messed up my result. 
+
+One potential issue with this analysis is that it does not account for the age of international players entering Division I programs. Many international recruits arrive with additional years of competitive experience at semi-professional or academy levels abroad, which can significantly affect both individual and team performance. By treating all international players equally in the dataset, the analysis overlooks how older or more seasoned athletes might provide a greater impact than younger recruits who are still adapting to the college game. This missing variable could obscure a more nuanced relationship between international presence and team success.
+
+Additionally, the dataset focuses solely on the number of international players rather than their relative experience, playing time, or influence within the roster. A team with several international players who seldom see the field may not benefit as much as one with fewer but more impactful international starters. Without controlling for these contextual factors, the correlation between international representation and wins may underestimate the true performance contribution of experienced international athletes.
