@@ -1,0 +1,50 @@
+---
+title: "wll"
+format: html
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+teams <- read_csv("https://dwillis.github.io/sports-data-files/wlax_team_stats_2025.csv")
+```
+
+```{r}
+ggplot() + geom_point(data=teams, aes(x=assists, y=overall_wins))
+```
+
+```{r}
+ggplot() + 
+  geom_point(data=teams, aes(x=assists, y=overall_wins)) +
+  geom_smooth(data=teams, aes(x=assists, y=overall_wins), method="lm")
+```
+
+```{r}
+fit <- lm(overall_wins ~ assists, data = teams)
+summary(fit)
+```
+
+```{r}
+umd <- teams |> filter(school_name == "Maryland")
+```
+
+```{r}
+ggplot() + 
+  geom_point(data=teams, aes(x=assists, y=overall_wins)) +
+  geom_smooth(data=teams, aes(x=assists, y=overall_wins), method="lm") +
+  geom_point(data=umd, aes(x=assists, y=overall_wins), color="red")
+```
+
+```{r}
+ggplot() + 
+  geom_point(data=teams, aes(x=green_cards, y=overall_wins)) +
+  geom_smooth(data=teams, aes(x=green_cards, y=overall_wins), method="lm")
+```
+
+```{r}
+gcfit <- lm(overall_wins ~ green_cards, data = teams)
+summary(gcfit)
+```
+
