@@ -3,107 +3,100 @@ title: "second_presentation"
 format: html
 ---
 
-I collected data of the unbeaten teams heading into the NCAA Tournament over the last three decades. Within the dataset, I included the team name, the year of their unbeaten record, how far they went in the ncaa tournament, their seed, how many games were they unbeaten for and whether it was a women's or men's team.
+While I have narrowed down the dataset to games where a team has passed for at least 450 yards, I still need to join a dataset which has who won those games to see just how rare Malik Washington's performances was in a loss. I'm not sure if there's a simple way for me to look at the outcome of the game or if I need to go through that myself. There was no column within college football fastR that displayed the result.
 
-With this data, I want to see the distribution of the ncaa tournament success each unbeaten team has — both men's and women's. I'm curious to see which programs have done it with a men's team and women's team. I'll dive into the seeding to see if it's actually better not to be the top seed when you are unbeaten.
+In terms of visualizing my findings, I think having a beeswarm of all the power conference games over the last five years and having the y-axis be passing yards. Then, the dots of teams who ended up losing that game but passed for over 450 passing yards is shown just to see if it is common or not and then label the Maryland game. If there's a better way you think works to show that same thing, I'm open to adjusting the idea.
 
-My question is does it make sense to bring in data of the team who suffered their first loss in their conference tournaments. I think it would be interesting to see if it's actually better to lose just before the NCAA Tournament and get that first defeat out of the way. Maryland this year would become an example of this because they took their first loss of the season in the Big Ten Tournament semifinals and we'll see how far they make it into the tournament (their path is very wide open with so many of the top teams getting eliminated)
+I'll add another bar chart that shows the number of times each conference has had a team throw for over 450 passing yards to see which conferences are more pass-heavy.
+
+
 ```{r}
 library(tidyverse)
-library(janitor)
-unbeaten_data <- read_csv("https://raw.githubusercontent.com/dylanschmidt05/jour479x_fall_2025-main/refs/heads/main/data/UnbeatenTeams.csv") |> clean_names()
+library(cfbfastR)
 ```
 
 ```{r}
-unbeaten_data |> 
-  group_by(gender) |> 
+cfb_data <- load_cfb_pbp(seasons=2014:2025)
+```
+
+```{r}
+cfb_data |> 
+  group_by(play_type) |> 
   summarise (
-    total = n()
+    total_count = n()
   ) |> 
-  arrange(desc(total))
+  arrange(desc(total_count))
 ```
 
 ```{r}
-unbeaten_data |> 
+sorted_pass_data <- cfb_data |>
+  filter(play_type == "Pass Reception" | play_type =="Passing Touchdown" | play_type =="Play Completion") |> 
+  group_by(year, week, pos_team, def_pos_team, home_team, away_team, offense_conference) |> 
+  summarise(
+    passing_yards = sum(yards_gained)
+  ) |> 
+  rename(
+    team = pos_team,
+    opponent = def_pos_team,
+    home = home_team,
+    away = away_team,
+    conference = offense_conference
+  )
+```
+
+```{r}
+over_450_passing <- sorted_pass_data |> 
+  filter(passing_yards >= 450)
+
+total_team_450_passing <- over_450_passing |> 
   group_by(team) |> 
   summarise (
-    total = n()
-  )  |> 
-  arrange(desc(total))
-```
-
-```{r}
-mens_unbeaten <- unbeaten_data |> 
-  filter (gender == "Men's")
-
-womens_unbeaten <- unbeaten_data |> 
-  filter (gender == "Women's")
-```
-
-```{r}
-mens_unbeaten |> 
-  group_by(seed) |> 
-  summarise (
-    seed_grouping = n()
+    total_count = n()
   ) |> 
-  arrange(desc(seed_grouping))
-
-mens_one_seeds <- mens_unbeaten |> 
-  filter(seed == "No. 1")
-
-mens_two_seeds <- mens_unbeaten |> 
-  filter(seed == "No. 2")
-
-mens_six_seeds <- mens_unbeaten |> 
-  filter(seed == "No. 6")
-
-mens_eight_seeds <- mens_unbeaten |> 
-  filter(seed == "No. 8")
-
-mens_ten_seeds <- mens_unbeaten |> 
-  filter(seed == "No. 10")
-
-mens_thirteen_seeds <- mens_unbeaten |> 
-  filter(seed == "No. 13")
-
-mens_unseeded <- mens_unbeaten |> 
-  filter(seed == "Unseeded")
+  arrange(desc(total_count))
 ```
 
 ```{r}
-womens_unbeaten |> 
-  group_by(seed) |> 
-  summarise (
-    seed_grouping = n()
-  )  |> 
-  arrange(desc(seed_grouping))
-
-womens_one_seeds <- womens_unbeaten |> 
-  filter(seed == "No. 1")
-
-womens_two_seeds <- womens_unbeaten |> 
-  filter(seed == "No. 2")
-
-womens_three_seeds <- womens_unbeaten |> 
-  filter(seed == "No. 3")
-
-womens_four_seeds <- womens_unbeaten |> 
-  filter(seed == "No. 4")
-
-womens_six_seeds <- womens_unbeaten |> 
-  filter(seed == "No. 6")
-
-womens_seven_seeds <- womens_unbeaten |> 
-  filter(seed == "No. 7")
-
-womens_thirteen_seeds <- womens_unbeaten |> 
-  filter(seed == "No. 13")
-
-womens_unseeded <- womens_unbeaten |> 
-  filter(seed == "Unseeded")
+top_ten_passing_performances <- total_team_450_passing |> 
+  top_n(10)
 ```
 
+```{r}
+ggplot() + 
+  geom_bar(
+    data=top_ten_passing_performances, 
+    aes(x=reorder(team, -total_count),
+        weight=total_count)) + 
+  labs(
+    title="Teams with the most games of at least 450 passing yards", 
+    subtitle="Washington State relies heavily through the air, with 22 450-passing yard games.",
+    x="School", 
+    y="Number of 450 passing-yard performances") + 
+  theme_minimal() + 
+  coord_flip()
+```
 
+```{r}
+big_ten_450_passing <- over_450_passing |> 
+  filter(conference == "Big Ten") |> 
+  group_by(team) |> 
+  summarise (
+    total_count = n()
+  ) |> 
+  arrange(desc(total_count))
+```
 
-
-
+```{r}
+ggplot() + 
+  geom_bar(
+    data=big_ten_450_passing, 
+    aes(x=reorder(team, -total_count),
+        weight=total_count)) + 
+  labs(
+    title="Big Ten teams with the most games of at least 450 passing yards", 
+    subtitle="Purdue has the second-most performances despite being the worst in the conference",
+    x="School", 
+    y="Number of 450 passing-yard performances") + 
+  theme_minimal() + 
+  coord_flip()
+```
