@@ -1,102 +1,165 @@
 ---
 title: "second_presentation"
+author: "Dylan Schmidt"
 format: html
 ---
 
-While I have narrowed down the dataset to games where a team has passed for at least 450 yards, I still need to join a dataset which has who won those games to see just how rare Malik Washington's performances was in a loss. I'm not sure if there's a simple way for me to look at the outcome of the game or if I need to go through that myself. There was no column within college football fastR that displayed the result.
+As I developed the charts and beeswarm plots, the data helped recast Maryland’s loss from just a frustrating result into a genuinely unusual statistical event. Plotting every 450-yard passing performance since 2013, broken down by conference and school, immediately showed how rare these games are — especially outside the Big 12 and former Pac-12. The Big Ten appears far less frequently in that cluster, which already makes Maryland’s performance visually stand out as something that doesn’t align with the conference’s typical offensive identity.
 
-In terms of visualizing my findings, I think having a beeswarm of all the power conference games over the last five years and having the y-axis be passing yards. Then, the dots of teams who ended up losing that game but passed for over 450 passing yards is shown just to see if it is common or not and then label the Maryland game. If there's a better way you think works to show that same thing, I'm open to adjusting the idea.
+When I filtered the dataset to show only the losses among those 450-yard games, the visualization became even more striking. Almost all teams who reach that level of passing production win, often by large margins. Losses are statistical outliers, appearing as scattered dots on the far edges of the beeswarm plot. Seeing how empty that “loss” side is reinforces how much teams usually control a game when they throw for that many yards.
 
-I'll add another bar chart that shows the number of times each conference has had a team throw for over 450 passing yards to see which conferences are more pass-heavy.
+That’s where the five-season Big Ten window becomes essential. Within the last five years, only two Big Ten programs have thrown for 450+ yards and lost: Maryland in this game, and Ohio State in 2021 against Oregon. The beeswarm plot makes it visually obvious — only two dots from the conference appear in red. In a league where high-passing totals normally correlate strongly with wins, Maryland’s performance falls into a tiny category of statistical exceptions.
 
+So the story that emerges isn’t just that Maryland lost despite a big passing day — it’s that Maryland produced the kind of offensive yardage that almost always results in a win, both nationally and especially within the recent Big Ten landscape, yet failed to convert that production into meaningful outcomes. The data frames the game as a rare case of offensive volume without payoff, spotlighting the deeper issues with efficiency, situational execution, and defensive breakdowns that ultimately shaped the result.
 
 ```{r}
 library(tidyverse)
-library(cfbfastR)
+library(lubridate)
+library(ggrepel)
 ```
 
 ```{r}
-cfb_data <- load_cfb_pbp(seasons=2014:2025)
+cfb_data <- read_csv("https://thescoop.org/sports-data-files/footballlogs1325.csv")
 ```
 
 ```{r}
-cfb_data |> 
-  group_by(play_type) |> 
+cfb_data <- cfb_data |> 
+  mutate(
+    Season = if_else(month(Date) >= 8, year(Date), year(Date) - 1)
+  ) 
+```
+
+```{r}
+over_450_games <- cfb_data |> 
+  filter(PassYds >= 450)
+
+team_totals <- over_450_games |> 
+  group_by(Team) |> 
+  summarise (
+    count = n()
+  ) |> 
+  arrange (desc(count))
+
+top_ten <- team_totals |> 
+  top_n(10)
+
+ggplot() + 
+  geom_bar(
+    data=top_ten, 
+    aes(x=reorder(Team, -count),
+        weight=count)) + 
+  labs(
+    title="Washington State has relied heavily on its passing attack since 2013", 
+    subtitle="Five teams are currently Power Four, with Washington State a former Pac-12 school",
+    x="School", 
+    y="Total number of 450-passing performances") + 
+  theme_minimal() + 
+  coord_flip()
+```
+
+```{r}
+conference_totals <- over_450_games |> 
+  group_by(Conference) |> 
+  summarise (
+    count = n()
+  ) |> 
+  arrange (desc(count))
+
+ggplot() + 
+  geom_bar(
+    data=conference_totals, 
+    aes(x=reorder(Conference, -count),
+        weight=count)) + 
+  labs(
+    title="The Big Ten has historically had some strong running back", 
+    subtitle="Players like Jonathan Taylor and Saquon Barkley shoulder some of the offense",
+    x="Conference", 
+    y="Total number of 450-passing performances") + 
+  theme_minimal() + 
+  coord_flip()
+```
+
+```{r}
+over_450_losses <- over_450_games |> 
+  filter(Result == "L")
+```
+
+```{r}
+maryland_over_450_losses <- over_450_losses |> 
+  filter(Team == "Maryland")
+```
+
+```{r}
+last_five_years <- cfb_data |> 
+  filter (Season >=2021)
+```
+
+```{r}
+last_five_years_losses <- over_450_losses |> 
+  filter (Season >=2021)
+```
+
+
+```{r}
+ggplot() + 
+  geom_jitter(
+    data=last_five_years, 
+    aes(x=Season, y=PassYds), color="grey") + 
+  geom_jitter(
+    data=last_five_years_losses, 
+    aes(x=Season, y=PassYds), color="red") +
+  geom_text_repel(
+    data=maryland_over_450_losses, 
+    aes(x=Season, y=PassYds, label=Team)) +
+  labs(
+    title="Just three teams lost a game with over 450 passing yards this season", 
+    subtitle="Maryland's loss to Michigan State was a rarity in recent college football",
+    x="Season", 
+    y="Passing Yards")
+```
+
+```{r}
+count <- last_five_years_losses |> 
+  group_by(Conference) |> 
   summarise (
     total_count = n()
-  ) |> 
-  arrange(desc(total_count))
-```
-
-```{r}
-sorted_pass_data <- cfb_data |>
-  filter(play_type == "Pass Reception" | play_type =="Passing Touchdown" | play_type =="Play Completion") |> 
-  group_by(year, week, pos_team, def_pos_team, home_team, away_team, offense_conference) |> 
-  summarise(
-    passing_yards = sum(yards_gained)
-  ) |> 
-  rename(
-    team = pos_team,
-    opponent = def_pos_team,
-    home = home_team,
-    away = away_team,
-    conference = offense_conference
   )
 ```
 
 ```{r}
-over_450_passing <- sorted_pass_data |> 
-  filter(passing_yards >= 450)
-
-total_team_450_passing <- over_450_passing |> 
-  group_by(team) |> 
-  summarise (
-    total_count = n()
-  ) |> 
-  arrange(desc(total_count))
-```
-
-```{r}
-top_ten_passing_performances <- total_team_450_passing |> 
-  top_n(10)
-```
-
-```{r}
 ggplot() + 
   geom_bar(
-    data=top_ten_passing_performances, 
-    aes(x=reorder(team, -total_count),
+    data=count, 
+    aes(x=reorder(Conference, -total_count),
         weight=total_count)) + 
   labs(
-    title="Teams with the most games of at least 450 passing yards", 
-    subtitle="Washington State relies heavily through the air, with 22 450-passing yard games.",
-    x="School", 
-    y="Number of 450 passing-yard performances") + 
+    title="Losses by conference with over 450 passing yards since 2021", 
+    subtitle="The Big Ten has the fewest such defeats of the Power Four conferences",
+    x="Conference", 
+    y="Number of 450-passing yard losing performances since 2021") + 
   theme_minimal() + 
   coord_flip()
 ```
 
 ```{r}
-big_ten_450_passing <- over_450_passing |> 
-  filter(conference == "Big Ten") |> 
-  group_by(team) |> 
-  summarise (
-    total_count = n()
-  ) |> 
-  arrange(desc(total_count))
-```
+big_ten_games <- last_five_years |> 
+  filter(Conference == "Big Ten Conference")
 
-```{r}
+big_ten_losses <- last_five_years_losses |> 
+  filter(Conference == "Big Ten Conference")
 ggplot() + 
-  geom_bar(
-    data=big_ten_450_passing, 
-    aes(x=reorder(team, -total_count),
-        weight=total_count)) + 
+  geom_jitter(
+    data=big_ten_games, 
+    aes(x=Season, y=PassYds), color="grey") + 
+  geom_jitter(
+    data=big_ten_losses, 
+    aes(x=Season, y=PassYds), color="red") +
+  geom_text_repel(
+    data=big_ten_losses, 
+    aes(x=Season, y=PassYds, label=Team)) +
   labs(
-    title="Big Ten teams with the most games of at least 450 passing yards", 
-    subtitle="Purdue has the second-most performances despite being the worst in the conference",
-    x="School", 
-    y="Number of 450 passing-yard performances") + 
-  theme_minimal() + 
-  coord_flip()
+    title="Big Ten games over the last five years sorted by passing yards", 
+    subtitle="Maryland's loss was the first such occurence since 2021, when Ohio State suffered the same fate",
+    x="Season", 
+    y="Passing Yards")
 ```
