@@ -4,35 +4,56 @@ author: "Dylan Schmidt"
 format: html
 ---
 
-As I developed the charts and beeswarm plots, the data helped recast Maryland’s loss from just a frustrating result into a genuinely unusual statistical event. Plotting every 450-yard passing performance since 2013, broken down by conference and school, immediately showed how rare these games are — especially outside the Big 12 and former Pac-12. The Big Ten appears far less frequently in that cluster, which already makes Maryland’s performance visually stand out as something that doesn’t align with the conference’s typical offensive identity.
-
-When I filtered the dataset to show only the losses among those 450-yard games, the visualization became even more striking. Almost all teams who reach that level of passing production win, often by large margins. Losses are statistical outliers, appearing as scattered dots on the far edges of the beeswarm plot. Seeing how empty that “loss” side is reinforces how much teams usually control a game when they throw for that many yards.
-
-That’s where the five-season Big Ten window becomes essential. Within the last five years, only two Big Ten programs have thrown for 450+ yards and lost: Maryland in this game, and Ohio State in 2021 against Oregon. The beeswarm plot makes it visually obvious — only two dots from the conference appear in red. In a league where high-passing totals normally correlate strongly with wins, Maryland’s performance falls into a tiny category of statistical exceptions.
-
-So the story that emerges isn’t just that Maryland lost despite a big passing day — it’s that Maryland produced the kind of offensive yardage that almost always results in a win, both nationally and especially within the recent Big Ten landscape, yet failed to convert that production into meaningful outcomes. The data frames the game as a rare case of offensive volume without payoff, spotlighting the deeper issues with efficiency, situational execution, and defensive breakdowns that ultimately shaped the result.
-
 ```{r}
 library(tidyverse)
 library(lubridate)
 library(ggrepel)
-```
+library(ggbeeswarm)
 
-```{r}
 cfb_data <- read_csv("https://thescoop.org/sports-data-files/footballlogs1325.csv")
-```
 
-```{r}
 cfb_data <- cfb_data |> 
   mutate(
     Season = if_else(month(Date) >= 8, year(Date), year(Date) - 1)
   ) 
 ```
+In modern college football, a 450-yard passing performance is usually synonymous with victory. Quarterbacks pile up yards at unprecedented rates, and teams that reach that threshold almost always walk away with a win. That is what made Maryland’s loss to Michigan State so striking: despite one of the most prolific passing performances of the season, the Terps still ended the night on the wrong side of the scoreboard. The game served as a rare reminder that even in an era dominated by explosive offenses, yardage alone does not guarantee success.
+
+Extreme passing performances have become increasingly common over the past decade, driven by faster-paced offenses, spread formations, and the growing emphasis on quarterback play. Some conferences and programs have embraced this trend more fully than others, creating environments where 450-yard passing games occur with some regularity. Yet even in these pass-heavy contexts, losing despite massive yardage is exceedingly rare, making such games noteworthy.
+
+This analysis explores where 450-yard passing performances occur most frequently, which programs produce them most often, and the circumstances under which they still result in losses. Maryland’s unusual loss serves as the focal point of this story, providing a lens through which we can examine broader trends in college football offense and efficiency.
 
 ```{r}
 over_450_games <- cfb_data |> 
   filter(PassYds >= 450)
 
+conference_totals <- over_450_games |> 
+  group_by(Conference) |> 
+  summarise (
+    count = n()
+  ) |> 
+  arrange (desc(count))
+
+ggplot() + 
+  geom_bar(
+    data=conference_totals, 
+    aes(x=reorder(Conference, -count),
+        weight=count)) + 
+  labs(
+    title="The Big Ten has historically had some strong running backs", 
+    subtitle="Players like Jonathan Taylor and Saquon Barkley shoulder carry the offense",
+    x="Conference", 
+    y="Total number of 450-passing performances") + 
+  theme_minimal() + 
+  coord_flip()
+```
+Extreme passing performances are relatively rare in the Big Ten compared with some other conferences. The conference traditionally emphasizes balanced offenses and strong defenses, making 450-yard passing games notable events rather than common occurrences. Examining conference trends helps provide context for understanding how unusual these high-yardage games can be.
+
+Conferences like the Pac-12, which feature more pass-heavy systems, produce extreme passing performances more frequently, while Big Ten teams tend to reach these thresholds less often. This sets the stage for analyzing Maryland’s rare loss despite surpassing 450 passing yards.
+
+The chart highlights that the Big Ten contributes relatively few 450-yard passing games, making Maryland’s recent performance — even in a losing effort — a noteworthy exception. In contrast, conferences with pass-heavy systems show higher totals, reflecting a different offensive philosophy.
+
+```{r}
 team_totals <- over_450_games |> 
   group_by(Team) |> 
   summarise (
@@ -57,50 +78,57 @@ ggplot() +
   coord_flip()
 ```
 
-```{r}
-conference_totals <- over_450_games |> 
-  group_by(Conference) |> 
-  summarise (
-    count = n()
-  ) |> 
-  arrange (desc(count))
+Certain programs consistently push passing as a foundational strategy. High-yardage games tend to cluster within these schools, reflecting deliberate offensive philosophies rather than random variation. Programs like Washington State have become synonymous with prolific passing, while others achieve sporadic high-yardage outputs.
 
-ggplot() + 
-  geom_bar(
-    data=conference_totals, 
-    aes(x=reorder(Conference, -count),
-        weight=count)) + 
-  labs(
-    title="The Big Ten has historically had some strong running back", 
-    subtitle="Players like Jonathan Taylor and Saquon Barkley shoulder some of the offense",
-    x="Conference", 
-    y="Total number of 450-passing performances") + 
-  theme_minimal() + 
-  coord_flip()
-```
+These team-level trends provide insight into which programs are most likely to produce extreme passing performances and which might occasionally falter despite large yardage totals.
+
+Washington State’s prominence reflects a long-term commitment to pass-heavy offensive systems. These systems produce large passing totals regularly, but they also introduce risk: even prolific passing games do not guarantee victory.
 
 ```{r}
 over_450_losses <- over_450_games |> 
   filter(Result == "L")
+
+over_450_total_losses <- cfb_data |> 
+  filter (PassYds >= 450 & Result == "L")
+
+team_loss_totals <- over_450_total_losses |> 
+  group_by(Team) |> 
+  summarise (
+    count = n()
+  ) |> 
+  arrange (desc(count)) |> 
+  top_n(10)
+
+ggplot() + 
+  geom_bar(
+    data=team_loss_totals, 
+    aes(x=reorder(Team, -count),
+        weight=count)) + 
+  labs(
+    title="Big Ten schools rarely lose with over 450 passing yards", 
+    subtitle="Purdue and Indiana both have three such losses, which lead the Big Ten",
+    x="School", 
+    y="Losing efforts with over 450 passing yards") + 
+  theme_minimal() + 
+  coord_flip()
 ```
+
+While 450-yard passing games almost always result in wins, there are notable exceptions. These rare losses underscore that extreme yardage alone cannot compensate for defensive lapses, turnovers, or game-control issues.
+
+Examining these losses provides a lens for understanding the limits of passing production and sets the stage for Maryland’s unusual defeat.
+
+The chart shows that losses despite extreme passing are concentrated in just a few programs, demonstrating how rare Maryland’s loss is within the conference landscape.
 
 ```{r}
 maryland_over_450_losses <- over_450_losses |> 
   filter(Team == "Maryland")
-```
 
-```{r}
 last_five_years <- cfb_data |> 
   filter (Season >=2021)
-```
 
-```{r}
 last_five_years_losses <- over_450_losses |> 
   filter (Season >=2021)
-```
 
-
-```{r}
 ggplot() + 
   geom_jitter(
     data=last_five_years, 
@@ -118,28 +146,35 @@ ggplot() +
     y="Passing Yards")
 ```
 
-```{r}
-count <- last_five_years_losses |> 
-  group_by(Conference) |> 
-  summarise (
-    total_count = n()
-  )
-```
+In the last five seasons, only a handful of teams have lost despite 450-yard passing performances. Maryland’s loss stands out as a rare and notable event within this dataset. Visualizing these games shows both the frequency of high-yardage wins and the few exceptional losses, highlighting the anomaly that is Maryland.
+
+Maryland’s red point stands out among the clusters of grey and red, emphasizing the rarity of losing with such extreme passing output. 
+Even in a conference known for strong offensive play, this loss is a statistical outlier.
+
 
 ```{r}
+conference_loss_totals <- over_450_total_losses |> 
+  group_by(Conference) |> 
+  summarise (
+    count = n()
+  ) |> 
+  arrange (desc(count))
+
 ggplot() + 
   geom_bar(
-    data=count, 
-    aes(x=reorder(Conference, -total_count),
-        weight=total_count)) + 
+    data=conference_loss_totals, 
+    aes(x=reorder(Conference, -count),
+        weight=count)) + 
   labs(
-    title="Losses by conference with over 450 passing yards since 2021", 
-    subtitle="The Big Ten has the fewest such defeats of the Power Four conferences",
+    title="The Pac-12 has the most 450-passing losses of Power conferences", 
+    subtitle="West Coast schools are typically pass-heavy, leading to 450-passing losses",
     x="Conference", 
-    y="Number of 450-passing yard losing performances since 2021") + 
+    y="Losing efforts with over 450 passing yards") + 
   theme_minimal() + 
   coord_flip()
 ```
+
+The Pac-12’s high number of 450-yard losses reflects its pass-heavy systems. These losses demonstrate that even prolific passing output is not sufficient for victory; context and efficiency are critical.
 
 ```{r}
 big_ten_games <- last_five_years |> 
@@ -148,18 +183,38 @@ big_ten_games <- last_five_years |>
 big_ten_losses <- last_five_years_losses |> 
   filter(Conference == "Big Ten Conference")
 ggplot() + 
-  geom_jitter(
+  geom_beeswarm(
     data=big_ten_games, 
     aes(x=Season, y=PassYds), color="grey") + 
-  geom_jitter(
+  geom_beeswarm(
     data=big_ten_losses, 
     aes(x=Season, y=PassYds), color="red") +
   geom_text_repel(
     data=big_ten_losses, 
     aes(x=Season, y=PassYds, label=Team)) +
   labs(
-    title="Big Ten games over the last five years sorted by passing yards", 
-    subtitle="Maryland's loss was the first such occurence since 2021, when Ohio State suffered the same fate",
+    title="Big Ten games over the last five years by passing yards", 
+    subtitle="Maryland's loss was the first such occurrence since 2021, when Ohio State suffered the same fate",
     x="Season", 
     y="Passing Yards")
 ```
+
+In the past five seasons, very few Big Ten teams have lost a game despite surpassing 450 passing yards. This contrasts sharply with some other conferences, where pass-heavy systems produce higher yardage and occasional losses more frequently. Highlighting these rare events helps us understand just how unusual Maryland’s recent loss was.
+
+Visualizing the Big Ten games from 2021 onward shows the distribution of high-passing performances. Grey points represent all games, while red points indicate losses. This distinction emphasizes that even when a team reaches extreme passing output, victory is not guaranteed.
+
+Maryland’s loss stands out as a rare exception, making it a focal point for this analysis. By examining both wins and losses together, we can see not only the rarity of 450-yard passing losses in the Big Ten, but also how these outliers fit into the broader trend of extreme passing performances across the conference.
+
+```{r}
+cfb_data |> 
+  mutate(Result_numeric = ifelse(Result == "W", 1, 0)) |> 
+  summarise(correlation = cor(PassYds, Result_numeric, use = "complete.obs"))
+
+cfb_data |> 
+  mutate(Result_numeric = ifelse(Result == "W", 1, 0)) |> 
+  summarise(correlation = cor(TotalYds, Result_numeric, use = "complete.obs"))
+```
+
+While passing yards are positively correlated with winning, the relationship is relatively weak. Total yards correlate slightly more strongly, showing that efficiency and balanced play are more predictive of success than raw volume.
+
+In conclusion, extreme passing performances are increasingly common in modern college football, but they do not guarantee victory. Maryland’s loss serves as a reminder that context, execution, and balance ultimately determine outcomes. Rare outlier games like this one stand out precisely because they defy the usual correlation between high passing output and winning, highlighting the limits of using raw yardage as a measure of success.
